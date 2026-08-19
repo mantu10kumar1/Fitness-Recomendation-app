@@ -1,4 +1,4 @@
-package com.fitness.userservice;
+package com.fitness.gateway;
 
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
@@ -6,10 +6,11 @@ import org.springframework.cloud.client.discovery.EnableDiscoveryClient;
 
 @SpringBootApplication
 @EnableDiscoveryClient
-public class UserserviceApplication {
+public class GatewayApplication {
 
 	public static void main(String[] args) {
-		SpringApplication.run(UserserviceApplication.class, args);
-		System.out.println("\n\t\t\t\t\t User Service application is running...");
+		SpringApplication.run(GatewayApplication.class, args);
+        System.out.println("\n\t\t\t\t\t Gateway application is running...");
 	}
+
 }
