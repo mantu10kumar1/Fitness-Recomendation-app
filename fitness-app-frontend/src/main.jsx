@@ -8,6 +8,9 @@ import App from './App'
 import { AuthProvider } from 'react-oauth2-code-pkce'
 import { authConfig } from './authConfig'
 
+// Tailwind CSS import
+import './index.css'
+
 // As of React 18
 const root = ReactDOM.createRoot(document.getElementById('root'))
 root.render(
