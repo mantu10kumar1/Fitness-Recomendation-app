@@ -24,8 +24,13 @@ eureka:
 
 gemini:
   api:
-    url: https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent
-    key: AIzaSyBOrzjc6igbC5IpWhdf31du2mUgL2pkMZg
+    url: https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent
+    key: AQ.Ab8RN6KC0ggQLxoy4P3P9p7_QYYdSOq7PX3JdaSCG_F5kpA4Qg
 
 server:
   port: 8083
+
+
+
+#    url: https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent
+#    key: AIzaSyBOrzjc6igbC5IpWhdf31du2mUgL2pkMZg
