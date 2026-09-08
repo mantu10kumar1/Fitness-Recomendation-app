@@ -1,4 +1,4 @@
-```markdown
+Markdown
 # 🏋️‍♂️ Fitness.AI - Microservices Platform
 
 An enterprise-grade, event-driven fitness tracking and AI coaching application architected with **Spring Boot Microservices**, **Apache Kafka (KRaft)**, **MongoDB**, **React**, and **Google Gemini AI**.
@@ -7,10 +7,6 @@ An enterprise-grade, event-driven fitness tracking and AI coaching application a
 
 ## 📌 Architecture Overview
 
-
-```
-
-```
                   +-------------------------+
                   |  React Frontend (Vite)  |
                   |       (Port: 5173)      |
@@ -25,9 +21,6 @@ An enterprise-grade, event-driven fitness tracking and AI coaching application a
    +---------------------------+---------------------------+
    |                           |                           |
    v                           v                           v
-
-```
-
 +--------------+            +--------------+            +--------------+
 | User Service |            | Activity Svc |            |Eureka Server |
 | (Port: 8081) |            | (Port: 8082) |            | (Port: 8761) |
@@ -53,7 +46,6 @@ v
 | (airecommendationfit...) |
 +-------------------------+
 
-```
 
 ---
 
@@ -85,9 +77,6 @@ v
 
 ## 📂 Repository Structure
 
-
-```
-
 SBM-Starter-Project/
 ├── configserver/          # Spring Cloud Config Server (Port: 8888)
 ├── eureka/                # Netflix Eureka Service Discovery (Port: 8761)
@@ -97,7 +86,6 @@ SBM-Starter-Project/
 ├── aiservice/             # Kafka Consumer, Gemini AI & MongoDB (Port: 8083)
 └── fitness-app-frontend/  # React Application (Port: 5173)
 
-```
 
 ---
 
@@ -119,28 +107,16 @@ Start the services sequentially to ensure proper registration and config binding
    cd fitness-app-frontend
    npm install
    npm run dev
+🔑 Environment Configuration
+Add your Gemini API credentials to configserver/src/main/resources/config/ai-service.yml or your active profile:
 
-```
-
----
-
-## 🔑 Environment Configuration
-
-Add your Gemini API credentials to `configserver/src/main/resources/config/ai-service.yml` or your active profile:
-
-```yaml
+YAML
 gemini:
   api:
     url: [https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent](https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent)
     key: YOUR_GEMINI_API_KEY
-
-```
-
----
-
-## 📊 Sample AI Recommendation Output
-
-```json
+📊 Sample AI Recommendation Output
+JSON
 {
   "analysis": {
     "overall": "Solid 45-minute aerobic base run showing consistent endurance and effective cardiovascular conditioning.",
@@ -165,15 +141,5 @@ gemini:
     "Include 5-10 minutes of calf and hamstring static stretches."
   ]
 }
-
-```
-
----
-
-## 📜 License
-
-This project is open source and available under the [MIT License](https://www.google.com/search?q=LICENSE).
-
-```
-
-```
+📜 License
+This project is open source and available under the MIT License.
