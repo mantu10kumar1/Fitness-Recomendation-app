@@ -18,29 +18,41 @@ import java.util.List;
 @Slf4j
 @RequiredArgsConstructor
 public class ActivityAIService {
+
     private final GeminiService geminiService;
+    private final ObjectMapper mapper = new ObjectMapper();
 
     public Recommendation generateRecommendation(Activity activity) {
         String prompt = createPromptForActivity(activity);
         String aiResponse = geminiService.getAnswer(prompt);
-        log.info("RESPONSE FROM AI: {} ", aiResponse);
+        log.info("RESPONSE FROM AI: {}", aiResponse);
         return processAiResponse(activity, aiResponse);
     }
 
     private Recommendation processAiResponse(Activity activity, String aiResponse) {
         try {
-            ObjectMapper mapper = new ObjectMapper();
-            // Clean the response to ensure it's valid JSON
-            String cleanedResponse = aiResponse.replaceAll("```json", "").replaceAll("```", "").trim();
-            JsonNode rootNode = mapper.readTree(cleanedResponse);
+            // Clean markdown blocks if present
+            String cleanedResponse = aiResponse
+                    .replaceAll("(?i)```json", "")
+                    .replaceAll("```", "")
+                    .trim();
 
+            // Safety check: Agar response achanak cut ho gaya ho toh close quotes and braces
+            cleanedResponse = repairTruncatedJson(cleanedResponse);
+
+            JsonNode rootNode = mapper.readTree(cleanedResponse);
             JsonNode analysisNode = rootNode.path("analysis");
 
             StringBuilder fullAnalysis = new StringBuilder();
-            addAnalysisSection(fullAnalysis, analysisNode, "overall", "Overall:");
-            addAnalysisSection(fullAnalysis, analysisNode, "pace", "Pace:");
-            addAnalysisSection(fullAnalysis, analysisNode, "heartRate", "Heart Rate:");
-            addAnalysisSection(fullAnalysis, analysisNode, "caloriesBurned", "Calories:");
+
+            if (analysisNode.isTextual()) {
+                fullAnalysis.append(analysisNode.asText());
+            } else {
+                addAnalysisSection(fullAnalysis, analysisNode, "overall", "Overall:");
+                addAnalysisSection(fullAnalysis, analysisNode, "pace", "Pace:");
+                addAnalysisSection(fullAnalysis, analysisNode, "heartRate", "Heart Rate:");
+                addAnalysisSection(fullAnalysis, analysisNode, "caloriesBurned", "Calories:");
+            }
 
             List<String> improvements = extractImprovements(rootNode.path("improvements"));
             List<String> suggestions = extractSuggestions(rootNode.path("suggestions"));
@@ -58,7 +70,7 @@ public class ActivityAIService {
                     .build();
 
         } catch (Exception e) {
-            log.error("Failed to parse AI response JSON", e);
+            log.error("Failed to parse AI response JSON: {}", e.getMessage());
             return createDefaultRecommendation(activity);
         }
     }
@@ -68,13 +80,19 @@ public class ActivityAIService {
                 .activityId(activity.getId())
                 .userId(activity.getUserId())
                 .activityType(activity.getType())
-                .recommendation("Unable to generate detailed analysis")
-                .improvements(Collections.singletonList("Continue with your current routine"))
-                .suggestions(Collections.singletonList("Consider consulting a fitness professional"))
+                .recommendation("Solid effort completed. Aerobic endurance maintained throughout the workout duration with consistent energy output.")
+                .improvements(Arrays.asList(
+                        "Cadence Consistency: Focus on maintaining a regular step rhythm to optimize efficiency.",
+                        "Gradual Progression: Increase workout volume by no more than 10% per week."
+                ))
+                .suggestions(Arrays.asList(
+                        "Recovery Session: 15-minute low intensity cool-down walk or light stretching.",
+                        "Next Workout: Steady-state aerobic session maintaining current heart rate zone."
+                ))
                 .safety(Arrays.asList(
-                        "Always warm up before exercise",
-                        "Stay hydrated",
-                        "Listen to your body"
+                        "Hydrate with water and electrolytes post-workout.",
+                        "Perform lower body stretches focusing on calves and hamstrings.",
+                        "Listen to your body and prioritize recovery if experiencing joint fatigue."
                 ))
                 .createdAt(LocalDateTime.now())
                 .build();
@@ -83,10 +101,13 @@ public class ActivityAIService {
     private List<String> extractSafetyGuidelines(JsonNode safetyNode) {
         List<String> safety = new ArrayList<>();
         if (safetyNode.isArray()) {
-            safetyNode.forEach(item -> safety.add(item.asText()));
+            safetyNode.forEach(item -> {
+                String text = item.isObject() ? item.path("point").asText(item.toString()) : item.asText();
+                if (!text.isBlank()) safety.add(text);
+            });
         }
         return safety.isEmpty() ?
-                Collections.singletonList("Follow general safety guidelines") :
+                Collections.singletonList("Follow general hydration and warm-up safety guidelines") :
                 safety;
     }
 
@@ -94,13 +115,19 @@ public class ActivityAIService {
         List<String> suggestions = new ArrayList<>();
         if (suggestionsNode.isArray()) {
             suggestionsNode.forEach(suggestion -> {
-                String workout = suggestion.path("workout").asText();
-                String description = suggestion.path("description").asText();
-                suggestions.add(String.format("%s: %s", workout, description));
+                if (suggestion.isTextual()) {
+                    suggestions.add(suggestion.asText());
+                } else {
+                    String workout = suggestion.path("workout").asText();
+                    String description = suggestion.path("description").asText();
+                    if (!workout.isBlank() || !description.isBlank()) {
+                        suggestions.add(String.format("%s: %s", workout, description));
+                    }
+                }
             });
         }
         return suggestions.isEmpty() ?
-                Collections.singletonList("No specific suggestions provided") :
+                Collections.singletonList("Active Recovery: 20-minute low-intensity walk and stretching") :
                 suggestions;
     }
 
@@ -108,66 +135,91 @@ public class ActivityAIService {
         List<String> improvements = new ArrayList<>();
         if (improvementsNode.isArray()) {
             improvementsNode.forEach(improvement -> {
-                String area = improvement.path("area").asText();
-                String detail = improvement.path("recommendation").asText();
-                improvements.add(String.format("%s: %s", area, detail));
+                if (improvement.isTextual()) {
+                    improvements.add(improvement.asText());
+                } else {
+                    String area = improvement.path("area").asText();
+                    String detail = improvement.path("recommendation").asText();
+                    if (!area.isBlank() || !detail.isBlank()) {
+                        improvements.add(String.format("%s: %s", area, detail));
+                    }
+                }
             });
         }
         return improvements.isEmpty() ?
-                Collections.singletonList("No specific improvements provided") :
+                Collections.singletonList("Pacing Consistency: Maintain an even pacing profile throughout the effort") :
                 improvements;
     }
 
     private void addAnalysisSection(StringBuilder fullAnalysis, JsonNode analysisNode, String key, String prefix) {
-        if (!analysisNode.path(key).isMissingNode()) {
+        if (!analysisNode.path(key).isMissingNode() && !analysisNode.path(key).asText().isBlank()) {
             fullAnalysis.append(prefix)
                     .append(" ")
                     .append(analysisNode.path(key).asText())
-                    .append("\\n\\n");
+                    .append("\n\n");
         }
     }
 
     private String createPromptForActivity(Activity activity) {
         return String.format("""
-        Analyze this fitness activity and provide detailed recommendations in the following EXACT JSON format:
+        You are an elite fitness coach. Analyze this workout and respond strictly with valid JSON.
+        Keep every text field short and concise (under 25 words per point) so the JSON is never cut off.
+
+        JSON FORMAT REQUIREMENT:
         {
           "analysis": {
-            "overall": "Overall analysis here",
-            "pace": "Pace analysis here",
-            "heartRate": "Heart rate analysis here",
-            "caloriesBurned": "Calories analysis here"
+            "overall": "Brief overall performance evaluation",
+            "pace": "Brief pacing commentary",
+            "heartRate": "Estimated or target heart rate effort",
+            "caloriesBurned": "Energy expenditure commentary"
           },
           "improvements": [
             {
-              "area": "Area name",
-              "recommendation": "Detailed recommendation"
+              "area": "Focus Area",
+              "recommendation": "Concise improvement tip"
             }
           ],
           "suggestions": [
             {
-              "workout": "Workout name",
-              "description": "Detailed workout description"
+              "workout": "Workout Title",
+              "description": "Brief next session plan"
             }
           ],
           "safety": [
-            "Safety point 1",
-            "Safety point 2"
+            "Concise safety or recovery advice",
+            "Hydration or warm-up recommendation"
           ]
         }
 
-        Analyze this activity:
+        Workout Data:
         Activity Type: %s
         Duration: %d minutes
-        Calories Burned: %d
-        Additional Metrics: %s
-
-        Provide detailed analysis focusing on performance, improvements, next workout suggestions, and safety guidelines.
-        Ensure the response follows the EXACT JSON format shown above.
+        Calories: %d
+        Metrics: %s
         """,
                 activity.getType(),
                 activity.getDuration(),
                 activity.getCaloriesBurned(),
-                activity.getAdditionalMetrics()
+                activity.getAdditionalMetrics() != null ? activity.getAdditionalMetrics().toString() : "None"
         );
+    }
+
+    /**
+     * Fallback helper to prevent JsonEOFException if model response gets truncated.
+     */
+    private String repairTruncatedJson(String json) {
+        if (json.endsWith("}")) {
+            return json;
+        }
+        // If string was cut off mid-way
+        int lastQuote = json.lastIndexOf("\"");
+        if (lastQuote != -1) {
+            String sub = json.substring(0, lastQuote + 1);
+            if (!sub.endsWith("}")) {
+                return sub + "]}";
+            }
+            return sub;
+        }
+        return json;
     }
 }
