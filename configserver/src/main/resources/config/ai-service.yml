@@ -3,9 +3,9 @@ spring:
     name: ai-service
   data:
     mongodb:
-      uri: mongodb://localhost:27017/airecommendationfitness
+      uri: ${MONGODB_URI:mongodb://localhost:27017/airecommendationfitness}
   kafka:
-    bootstrap-servers: localhost:9092
+    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
     consumer:
       group-id: activity-processor-group
       key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
@@ -24,13 +24,8 @@ eureka:
 
 gemini:
   api:
-    url: https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent
-    key: AQ.Ab8RN6KC0ggQLxoy4P3P9p7_QYYdSOq7PX3JdaSCG_F5kpA4Qg
+    url: ${GEMINI_API_URL:https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent}
+    key: ${GEMINI_API_KEY}
 
 server:
   port: 8083
-
-
-
-#    url: https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent
-#    key: AIzaSyBOrzjc6igbC5IpWhdf31du2mUgL2pkMZg
