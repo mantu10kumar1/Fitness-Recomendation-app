@@ -1,7 +1,15 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router';
 import axios from 'axios';
-import AiLoader from './AiLoader';
+import {
+  Box,
+  Card,
+  CardContent,
+  Divider,
+  Typography,
+  CircularProgress,
+  Button
+} from '@mui/material';
 
 const ActivityDetail = () => {
   const { id } = useParams();
@@ -14,7 +22,7 @@ const ActivityDetail = () => {
 
   useEffect(() => {
     let attempts = 0;
-    const maxAttempts = 15; // 15 attempts * 1.5s = ~22 seconds timeout
+    const maxAttempts = 30; // 30 attempts * 2s = 60s timeout
 
     // 1. Fetch Activity Details
     const fetchActivity = async () => {
@@ -32,7 +40,7 @@ const ActivityDetail = () => {
       }
     };
 
-    // 2. Poll for Recommendation until generated
+    // 2. Poll for Recommendation from AI Service
     const fetchRecommendation = async () => {
       try {
         const recRes = await axios.get(`http://localhost:8080/api/recommendations/activity/${id}`, {
@@ -41,7 +49,7 @@ const ActivityDetail = () => {
           }
         });
 
-        if (recRes.data && (recRes.data.recommendation || recRes.data.improvements?.length > 0)) {
+        if (recRes.status === 200 && recRes.data) {
           setRecommendation(recRes.data);
           setRecLoading(false);
           if (pollingRef.current) clearInterval(pollingRef.current);
@@ -59,164 +67,163 @@ const ActivityDetail = () => {
     setRecLoading(true);
     fetchRecommendation();
 
-    // Start auto-retry polling every 1.5s
     pollingRef.current = setInterval(() => {
       if (attempts < maxAttempts) {
         fetchRecommendation();
       } else {
-        clearInterval(pollingRef.current);
+        setRecLoading(false);
+        if (pollingRef.current) clearInterval(pollingRef.current);
       }
-    }, 1500);
+    }, 2000);
 
     return () => {
       if (pollingRef.current) clearInterval(pollingRef.current);
     };
   }, [id]);
 
-  if (loading) return <AiLoader message="Loading activity details..." />;
-
-  if (!activity) {
+  if (loading) {
     return (
-      <div className="flex flex-col items-center justify-center min-h-[60vh] text-center p-4">
-        <p className="text-slate-400 mb-4 text-base">Activity could not be loaded.</p>
-        <button
-          onClick={() => navigate('/activities')}
-          className="px-5 py-2.5 bg-slate-800 hover:bg-slate-700 text-white rounded-xl text-sm font-semibold transition cursor-pointer"
-        >
-          &larr; Back to Activities
-        </button>
-      </div>
+      <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minHeight: '50vh', gap: 2 }}>
+        <CircularProgress color="primary" />
+        <Typography variant="body1">Loading activity details...</Typography>
+      </Box>
     );
   }
 
+  if (!activity) {
+    return (
+      <Box sx={{ textAlign: 'center', mt: 6 }}>
+        <Typography variant="h6" color="text.secondary" gutterBottom>Activity not found.</Typography>
+        <Button variant="contained" onClick={() => navigate('/activities')}>Back to Activities</Button>
+      </Box>
+    );
+  }
+
+  // Format analysis text properly
   const rawText = recommendation?.recommendation || recommendation?.analysis || '';
   const formattedAnalysis = rawText.replace(/\\n/g, '\n').trim();
 
   return (
-    <div className="max-w-4xl mx-auto p-4 sm:p-6 space-y-6">
-      <button
+    <Box sx={{ maxWidth: 800, mx: 'auto', p: 2 }}>
+      <Button
+        variant="text"
         onClick={() => navigate('/activities')}
-        className="text-sm font-medium text-cyan-400 hover:text-cyan-300 flex items-center gap-1.5 transition cursor-pointer"
+        sx={{ mb: 2 }}
       >
         &larr; Back to Activities
-      </button>
+      </Button>
 
-      {/* Activity Overview Card */}
-      <div className="bg-slate-900/80 border border-slate-800 rounded-2xl p-6 shadow-xl backdrop-blur-md">
-        <div className="flex items-center justify-between border-b border-slate-800 pb-4 mb-4">
-          <h2 className="text-2xl font-black text-white tracking-wide">{activity.type}</h2>
-          <span className="text-xs text-slate-400">
-            {activity.createdAt ? new Date(activity.createdAt).toLocaleString() : 'Recent Activity'}
-          </span>
-        </div>
-        <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
-          <div className="bg-slate-950/60 p-4 rounded-xl border border-slate-800/80">
-            <span className="text-xs text-slate-400 uppercase font-semibold">Duration</span>
-            <p className="text-xl font-bold text-cyan-400 mt-1">{activity.duration} Mins</p>
-          </div>
-          <div className="bg-slate-950/60 p-4 rounded-xl border border-slate-800/80">
-            <span className="text-xs text-slate-400 uppercase font-semibold">Calories Burned</span>
-            <p className="text-xl font-bold text-rose-400 mt-1">{activity.caloriesBurned} kcal</p>
-          </div>
-        </div>
-      </div>
+      {/* Activity Details Card */}
+      <Card sx={{ mb: 3, boxShadow: 3 }}>
+        <CardContent>
+          <Typography variant="h5" gutterBottom sx={{ fontWeight: 700 }}>
+            Activity Details
+          </Typography>
+          <Typography variant="body1" sx={{ mt: 1 }}><strong>Type:</strong> {activity.type}</Typography>
+          <Typography variant="body1"><strong>Duration:</strong> {activity.duration} minutes</Typography>
+          <Typography variant="body1"><strong>Calories Burned:</strong> {activity.caloriesBurned} kcal</Typography>
+          <Typography variant="body1">
+            <strong>Date:</strong> {activity.createdAt ? new Date(activity.createdAt).toLocaleString() : 'Recent Activity'}
+          </Typography>
+        </CardContent>
+      </Card>
 
-      {/* AI Insights & Recommendation Section */}
-      <div className="bg-gradient-to-b from-slate-900/90 to-slate-950 border border-indigo-500/30 rounded-2xl p-6 shadow-2xl space-y-5">
-        <div className="flex items-center gap-3">
-          <div className={`w-3 h-3 rounded-full ${recLoading ? 'bg-cyan-400 animate-ping' : 'bg-emerald-400'}`}></div>
-          <h3 className="text-xl font-bold bg-gradient-to-r from-cyan-400 via-indigo-300 to-fuchsia-400 bg-clip-text text-transparent">
+      {/* AI Recommendation Card */}
+      <Card sx={{ boxShadow: 4, border: '1px solid rgba(0, 150, 255, 0.2)' }}>
+        <CardContent>
+          <Typography variant="h5" gutterBottom sx={{ fontWeight: 700, color: 'primary.main' }}>
             AI Recommendation & Insights
-          </h3>
-        </div>
+          </Typography>
 
-        {recLoading ? (
-          /* Prominent Large AI Loader */
-          <div className="py-14 px-6 flex flex-col items-center justify-center space-y-6 bg-slate-950/60 rounded-2xl border border-indigo-500/20 shadow-inner text-center">
-            <div className="relative flex items-center justify-center w-20 h-20">
-              {/* Outer Glowing Pulsing Ring */}
-              <div className="absolute inset-0 rounded-full border-2 border-cyan-500/30 animate-ping"></div>
-              {/* Spinning Ring */}
-              <div className="w-16 h-16 border-4 border-slate-800 border-t-cyan-400 border-r-indigo-500 rounded-full animate-spin"></div>
-              {/* Center Tech Core */}
-              <div className="absolute w-6 h-6 bg-gradient-to-tr from-cyan-400 to-indigo-500 rounded-full animate-pulse shadow-lg shadow-cyan-500/50"></div>
-            </div>
+          {recLoading ? (
+            <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', py: 5, gap: 2 }}>
+              <CircularProgress size={45} color="secondary" />
+              <Typography variant="body2" color="text.secondary">
+                Analyzing workout data & generating personalized AI feedback...
+              </Typography>
+            </Box>
+          ) : recommendation ? (
+            <Box sx={{ mt: 2 }}>
+              {/* Overall Analysis */}
+              {formattedAnalysis && (
+                <>
+                  <Typography variant="h6" sx={{ fontWeight: 600 }}>Analysis</Typography>
+                  <Typography paragraph sx={{ whiteSpace: 'pre-line', color: 'text.secondary', mt: 1 }}>
+                    {formattedAnalysis}
+                  </Typography>
+                  <Divider sx={{ my: 2 }} />
+                </>
+              )}
 
-            <div className="space-y-1.5">
-              <p className="text-base font-bold bg-gradient-to-r from-cyan-300 via-indigo-200 to-white bg-clip-text text-transparent">
-                Analyzing Workout & Generating Insights
-              </p>
-              <p className="text-xs text-slate-400">
-                Streaming personalized metrics via Kafka & Google AI...
-              </p>
-            </div>
-          </div>
-        ) : recommendation ? (
-          <div className="space-y-5">
-            {formattedAnalysis && (
-              <div className="bg-slate-950/80 border border-slate-800/80 rounded-xl p-5 text-slate-300 text-sm leading-relaxed whitespace-pre-line shadow-inner">
-                {formattedAnalysis}
-              </div>
-            )}
+              {/* Target Improvements */}
+              {recommendation?.improvements?.length > 0 && (
+                <div className="bg-slate-950/40 border border-slate-800/60 rounded-xl p-4">
+                  <h4 className="text-xs font-bold uppercase tracking-wider text-amber-400 mb-3 flex items-center gap-2">
+                    <span className="w-1.5 h-1.5 rounded-full bg-amber-400"></span>
+                    Target Improvements
+                  </h4>
+                  <ul className="space-y-2">
+                    {recommendation.improvements.map((item, idx) => (
+                      <li key={idx} className="text-sm text-slate-300 flex items-start gap-2.5">
+                        <span className="text-amber-400 font-bold">•</span>
+                        <span>
+                          {typeof item === 'string'
+                            ? item
+                            : `${item.area || item.improvement || ''}: ${item.recommendation || ''}`}
+                        </span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
 
-            {recommendation.improvements?.length > 0 && (
-              <div className="bg-slate-950/40 border border-slate-800/60 rounded-xl p-4">
-                <h4 className="text-xs font-bold uppercase tracking-wider text-amber-400 mb-3 flex items-center gap-2">
-                  <span className="w-1.5 h-1.5 rounded-full bg-amber-400"></span>
-                  Target Improvements
-                </h4>
-                <ul className="space-y-2">
-                  {recommendation.improvements.map((item, idx) => (
-                    <li key={idx} className="text-sm text-slate-300 flex items-start gap-2.5">
-                      <span className="text-amber-400 font-bold">•</span>
-                      <span>{item}</span>
-                    </li>
+              {/* Workout Suggestions */}
+              {recommendation?.suggestions?.length > 0 && (
+                <div className="bg-slate-950/40 border border-slate-800/60 rounded-xl p-4">
+                  <h4 className="text-xs font-bold uppercase tracking-wider text-cyan-400 mb-3 flex items-center gap-2">
+                    <span className="w-1.5 h-1.5 rounded-full bg-cyan-400"></span>
+                    Workout Suggestions
+                  </h4>
+                  <ul className="space-y-2">
+                    {recommendation.suggestions.map((item, idx) => (
+                      <li key={idx} className="text-sm text-slate-300 flex items-start gap-2.5">
+                        <span className="text-cyan-400 font-bold">•</span>
+                        <span>
+                          {typeof item === 'string'
+                            ? item
+                            : `${item.workout || item.suggestion || ''}: ${item.description || ''}`}
+                        </span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+                  <Divider sx={{ my: 2 }} />
+                </>
+              )}
+
+              {/* Safety */}
+              {recommendation.safety?.length > 0 && (
+                <>
+                  <Typography variant="h6" sx={{ fontWeight: 600, color: 'success.main' }}>
+                    Safety & Recovery Guidelines
+                  </Typography>
+                  {recommendation.safety.map((safetyItem, index) => (
+                    <Typography key={index} paragraph sx={{ mb: 1, pl: 1 }}>
+                      • {typeof safetyItem === 'string' ? safetyItem : safetyItem.description || JSON.stringify(safetyItem)}
+                    </Typography>
                   ))}
-                </ul>
-              </div>
-            )}
-
-            {recommendation.suggestions?.length > 0 && (
-              <div className="bg-slate-950/40 border border-slate-800/60 rounded-xl p-4">
-                <h4 className="text-xs font-bold uppercase tracking-wider text-cyan-400 mb-3 flex items-center gap-2">
-                  <span className="w-1.5 h-1.5 rounded-full bg-cyan-400"></span>
-                  Workout Suggestions
-                </h4>
-                <ul className="space-y-2">
-                  {recommendation.suggestions.map((item, idx) => (
-                    <li key={idx} className="text-sm text-slate-300 flex items-start gap-2.5">
-                      <span className="text-cyan-400 font-bold">•</span>
-                      <span>{item}</span>
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            )}
-
-            {recommendation.safety?.length > 0 && (
-              <div className="bg-slate-950/40 border border-slate-800/60 rounded-xl p-4">
-                <h4 className="text-xs font-bold uppercase tracking-wider text-emerald-400 mb-3 flex items-center gap-2">
-                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-400"></span>
-                  Safety & Recovery Guidelines
-                </h4>
-                <ul className="space-y-2">
-                  {recommendation.safety.map((item, idx) => (
-                    <li key={idx} className="text-sm text-slate-300 flex items-start gap-2.5">
-                      <span className="text-emerald-400 font-bold">•</span>
-                      <span>{item}</span>
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            )}
-          </div>
-        ) : (
-          <p className="text-xs text-slate-500">
-            Recommendation taking longer than expected. Please check back shortly.
-          </p>
-        )}
-      </div>
-    </div>
+                </>
+              )}
+            </Box>
+          ) : (
+            <Typography variant="body2" color="text.secondary" sx={{ py: 2 }}>
+              Recommendation is currently being processed or unavailable. Please check back in a few moments.
+            </Typography>
+          )}
+        </CardContent>
+      </Card>
+    </Box>
   );
 };
 
