@@ -6,7 +6,9 @@ An enterprise-grade, event-driven fitness tracking and AI coaching application a
 ---
 
 ## 📌 Architecture Overview
+## 📌 Architecture Overview
 
+![Fitness Microservices Architecture](https://mermaid.ink/img/pako:eNp9kcFuwjAMhl_F8pm20A4T6omDRByW7YAdqly3ps1KnCSlVdXx7nPboV1X7JL9f_vv-Jc6VwoZNWXk_sWc-F6bO_jH-81xG-Y8N3xXq0y9tV26eD50Q15r1G87gB2aI1_O8-mczm5-hQ9Y9w-4W8B77c7x9Xo_z0_9e5nN8_15m9GkFmgW2AHz_wT7k7Xw20K9U_VOHKj-B4bEhhg)
                ```
                   +-----------------------------+
                   |    React Frontend (Vite)    |
