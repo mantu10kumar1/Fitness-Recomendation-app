@@ -1,5 +1,6 @@
 package com.fitness.aiservice;
 
+import io.github.cdimascio.dotenv.Dotenv;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.cloud.client.discovery.EnableDiscoveryClient;
@@ -8,9 +9,16 @@ import org.springframework.cloud.client.discovery.EnableDiscoveryClient;
 @EnableDiscoveryClient
 public class AiserviceApplication {
 
-	public static void main(String[] args) {
-		SpringApplication.run(AiserviceApplication.class, args);
-        System.out.println("\n\t\t\t\t\t AI Service application is running...");
-	}
+    public static void main(String[] args) {
+        // Load .env file from project root or current working directory
+        Dotenv dotenv = Dotenv.configure()
+                .ignoreIfMissing()
+                .load();
 
+        dotenv.entries().forEach(entry -> {
+            System.setProperty(entry.getKey(), entry.getValue());
+        });
+
+        SpringApplication.run(AiserviceApplication.class, args);
+    }
 }
